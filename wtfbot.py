@@ -7,8 +7,10 @@ import plotly.plotly as py
 import plotly.graph_objs as go
 
 # starterbot's ID as an environment variable
-BOT_ID = os.environ.get("BOT_ID")
+BOT_ID = os.environ.get("SLACK_BOT_ID")
 SLACK_TOKEN = os.environ.get('SLACK_BOT_TOKEN')
+PLOTLY_USER = os.environ.get('PLOTLY_USER')
+PLOTLY_TOKEN = os.environ.get('PLOTLY_TOKEN')
 
 # constants
 AT_BOT = "<@" + BOT_ID + ">"
@@ -23,10 +25,11 @@ slack_client = SlackClient(SLACK_TOKEN)
 user_cache = dict()
 cache_changed = True
 
+
 def post_wtf_status_graph(channel):
     global cache_changed
     if cache_changed == True:
-        py.sign_in(os.environ.get('PLOTLY_USER'), os.environ.get('PLOTLY_TOKEN'))
+        py.sign_in(PLOTLY_USER, PLOTLY_TOKEN)
         x = []
         y = []
         for key in user_cache:
@@ -36,19 +39,22 @@ def post_wtf_status_graph(channel):
         trace = go.Bar(x=x, y=y)
         data = [trace]
         layout = go.Layout(title='WTF Bar Chart - ' + time.strftime("%c"),
-            width=600,
-            height=250,
-            xaxis=dict(title="Team Members"),
-            yaxis=dict(title="WTF Level (0-100)", range=[0, 100]))
+                           width=600,
+                           height=250,
+                           xaxis=dict(title="Team Members"),
+                           yaxis=dict(title="WTF Level (0-100)", range=[0, 100]))
         fig = go.Figure(data=data, layout=layout)
 
         py.image.save_as(fig, filename='wtf-barchart.png')
 
-    f = {'file': ('wtf-barchart.png', open('wtf-barchart.png', 'rb'), 'image/png', {'Expires':'0'})}
+    f = {'file': ('wtf-barchart.png', open('wtf-barchart.png', 'rb'), 'image/png', {'Expires': '0'})}
     response = requests.post(url='https://slack.com/api/files.upload', data=
-       {'token': SLACK_TOKEN, 'title': 'WTF!?! Status Graph', 'initial_comment': 'Help your teammates with a big WTF Factor to make the team stronger.', 'channels': channel, 'media': f},
-       headers={'Accept': 'application/json'}, files=f)
+    {'token': SLACK_TOKEN, 'title': 'WTF!?! Status Graph',
+     'initial_comment': 'Help your teammates with a big WTF Factor to make the team stronger.', 'channels': channel,
+     'media': f},
+                             headers={'Accept': 'application/json'}, files=f)
     cache_changed = False
+
 
 def parse_level(command):
     try:
@@ -60,6 +66,7 @@ def parse_level(command):
     except ValueError:
         lvl = -1
     return lvl
+
 
 def handle_command(command, channel, username, user_id):
     """
@@ -74,17 +81,17 @@ def handle_command(command, channel, username, user_id):
         response = "Help is on the way!!!"
         resp_attach = [{'color': '#36a64f',
                         'title': 'Available Commands:', 'fields': [
-                        {
-                            'title': 'level',
-                            'value': 'A number from 0 to 99',
-                            'short': False
-                        },
-                        {
-                            'title': 'status',
-                            'value': 'No parameters required',
-                            'short': False
-                        }
-                    ]}]
+                {
+                    'title': 'level',
+                    'value': 'A number from 0 to 99',
+                    'short': False
+                },
+                {
+                    'title': 'status',
+                    'value': 'No parameters required',
+                    'short': False
+                }
+            ]}]
         slack_client.api_call("chat.postMessage", channel=channel,
                               text=response, attachments=json.dumps(resp_attach), as_user=True)
     elif command.startswith(LEVEL_COMMAND):
@@ -93,9 +100,10 @@ def handle_command(command, channel, username, user_id):
         cache_changed = True
         response = "_<@" + username + ">_, level " + str(lvl) + " recorded.  Thanks!"
         slack_client.api_call("chat.postMessage", channel=channel,
-            text=response, as_user=True)
+                              text=response, as_user=True)
     elif command.startswith(STATUS_COMMAND):
         post_wtf_status_graph(channel)
+
 
 def parse_slack_output(slack_rtm_output):
     """
@@ -132,8 +140,9 @@ def parse_slack_output(slack_rtm_output):
                            output['channel'], user['user']['name'], output['message']['user']
     return None, None, None, None
 
+
 if __name__ == "__main__":
-    READ_WEBSOCKET_DELAY = 1 # 1 second delay between reading from firehose
+    READ_WEBSOCKET_DELAY = 1  # 1 second delay between reading from firehose
     if slack_client.rtm_connect():
         print("StarterBot connected and running!")
         while True:
